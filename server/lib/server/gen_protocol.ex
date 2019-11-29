@@ -1,6 +1,7 @@
 defmodule Server.GenProtocol do
   use GenServer
   require Poison
+  require Logger
 
   @behaviour :ranch_protocol
 
@@ -14,14 +15,20 @@ defmodule Server.GenProtocol do
 
     :ok = :ranch.accept_ack(ref)
     :ok = transport.setopts(socket, [{:active, true}])
-    :gen_server.enter_loop(__MODULE__, [], %{socket: socket, transport: transport, filename: "output.txt"})
+    :gen_server.enter_loop(__MODULE__, [], %{
+      socket: socket,
+      transport: transport,
+      filename: "output.txt",
+      check_sum: 0,
+      total_size: 0,
+    })
   end
 
 
-  def handle_info({:tcp, socket, data}, state = %{socket: socket, transport: transport, filename: filename}) do
+  def handle_info({:tcp, socket, data}, state) do
     case String.split(data) do
-      ["PUT", filename] ->
-        send(self(), {:store_file, filename})
+      ["PUT", file_size, filename] ->
+        send(self(), {:store_file, file_size, filename})
       ["GET", filename] ->
         send(self(), {:get_file, filename})
       _ ->
@@ -30,9 +37,18 @@ defmodule Server.GenProtocol do
     {:noreply, state}
   end
 
-  def handle_info({:download, data}, state= %{socket: socket, transport: transport, filename: filename}) do
-    File.write(filename, data, [:append])
-    {:noreply, state}
+  def handle_info({:store_file, file_size, filename}, state) do
+    {:noreply, %{state | filename:  filename, total_size: String.to_integer(file_size)}}
+  end
+
+  def handle_info({:download, data}, state= %{
+    socket: socket, transport: transport, filename: filename,
+    check_sum: check_sum, total_size: total_size}) do
+      File.write(filename, data, [:append])
+      if byte_size(data) + check_sum == total_size do
+        transport.close(socket)
+      end
+      {:noreply, %{state | check_sum: check_sum + byte_size(data)}}
   end
 
   def handle_info({:get_file, filename}, state = %{socket: socket, transport: transport, filename: filename}) do
@@ -51,11 +67,9 @@ defmodule Server.GenProtocol do
     {:noreply, state}
   end
 
-  def handle_info({:store_file, filename}, state = %{socket: socket, transport: transport, filename: file}) do
-    {:noreply, %{socket: socket, transport: transport, filename: filename}}
-  end
 
-  def handle_info({:tcp_closed, socket}, state = %{socket: socket, transport: transport, filename: filename}) do
+
+  def handle_info({:tcp_closed, socket}, state = %{socket: socket, transport: transport}) do
     IO.puts "Closing"
     transport.close(socket)
     {:stop, :normal, state}
