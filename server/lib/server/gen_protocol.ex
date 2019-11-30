@@ -4,6 +4,7 @@ defmodule Server.GenProtocol do
   require Logger
 
   @behaviour :ranch_protocol
+  @root "../../assets/"
 
   def start_link(ref, socket, transport, _opts) do
     pid = :proc_lib.spawn_link(__MODULE__, :init, [ref, socket, transport])
@@ -14,7 +15,7 @@ defmodule Server.GenProtocol do
     IO.puts "Starting protocol"
 
     :ok = :ranch.accept_ack(ref)
-    :ok = transport.setopts(socket, [{:active, true}])
+    :ok = transport.setopts(socket, [:binary, {:active, true}])
     :gen_server.enter_loop(__MODULE__, [], %{
       socket: socket,
       transport: transport,
@@ -51,19 +52,20 @@ defmodule Server.GenProtocol do
       {:noreply, %{state | check_sum: check_sum + byte_size(data)}}
   end
 
-  def handle_info({:get_file, filename}, state = %{socket: socket, transport: transport, filename: filename}) do
-    content =
-      "../../assets/" <> filename
-      |> Path.expand(__DIR__)
-      |> File.read!
-    data =
-      Poison.encode!(%{
-        "status" => "success",
-        "filename" => filename,
+  def handle_info({:get_file, filename}, state = %{socket: socket, transport: transport}) do
+    path = @root <> filename |> Path.expand(__DIR__)
+    {tmp, _} = System.cmd("wc", ["-c", path])
+    file_size = String.split(tmp) |> Enum.at(0)
+    transport.send(socket, "PUT #{file_size} #{filename}")
+    send(self(), {:transfer, path})
+    {:noreply, %{state | filename: filename }}
+  end
 
-        "content" => content,
-      })
-    transport.send(socket, data)
+  def handle_info({:transfer, filename}, state= %{socket: socket, transport: transport}) do
+    File.stream!(filename, [], 1024)
+    |> Enum.each(fn chunk ->
+      transport.send(socket, chunk)
+    end)
     {:noreply, state}
   end
 

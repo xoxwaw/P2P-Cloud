@@ -3,6 +3,7 @@ defmodule Client.Server do
   use GenServer
 
   @ip {127, 0, 0, 1}
+  @root "../../assets/"
 
   def start_link(state) do
     GenServer.start_link(__MODULE__, state)
@@ -16,7 +17,7 @@ defmodule Client.Server do
   def handle_info(:connect, state=%{socket: sock, port: port}) do
     Logger.info "Connecting to #{:inet.ntoa(@ip)}:#{port}"
 
-    case :gen_tcp.connect(@ip, port, [active: true]) do
+    case :gen_tcp.connect(@ip, port, [:binary, active: true]) do
       {:ok, socket} ->
         {:noreply, %{state | socket: socket}}
       {:error, reason} ->
@@ -25,8 +26,12 @@ defmodule Client.Server do
   end
 
   def handle_info({:tcp, _, data}, state) do
-    Logger.info "Received #{data}"
-
+    case String.split(data) do
+      ["PUT", file_size, filename] ->
+        send(self(), {:response, {:metadata, file_size, filename}})
+      _ ->
+        send(self(), {:response, {:download, data}})
+    end
     {:noreply, state}
   end
 
@@ -34,7 +39,7 @@ defmodule Client.Server do
   def handle_info({:tcp_error, _}, state), do: {:stop, :normal, state}
 
   def handle_info({:request, {:upload, path}}, %{socket: socket, port: port} = state) do
-    File.stream!(path, [], 1028)
+    File.stream!(path, [], 2048)
     |> Enum.each(fn chunk ->
       :gen_tcp.send(socket, chunk)
     end)
@@ -53,14 +58,28 @@ defmodule Client.Server do
     {:noreply, state}
   end
 
-  def handle_cast({:request, {:get_file, filename}}, %{socket: socket, port: port} = state) do
-    data = Poison.encode!(%{
-      "method" => "GET",
-      "filename" => filename}
-    )
-    :ok = :gen_tcp.send(socket, data)
-
+  def handle_cast({:request, {:get_file, filename}}, %{socket: socket} = state) do
+    :gen_tcp.send(socket, "GET #{filename}")
     {:noreply, state}
+  end
+
+  def handle_info({:response, {:metadata, file_size, filename}}, state) do
+    {
+      :noreply, %{
+        state | filename: @root <> filename |> Path.expand(__DIR__),
+        total_size: String.to_integer(file_size)}
+    }
+  end
+
+  def handle_info({:response, {:download, data}}, state= %{
+    socket: socket, filename: filename,
+    check_sum: check_sum, total_size: total_size}) do
+      Logger.info("Transfering... #{check_sum}/#{total_size}")
+      File.write(filename, data, [:append])
+      if byte_size(data) + check_sum == total_size do
+        :gen_tcp.close(socket)
+      end
+      {:noreply, %{state | check_sum: check_sum + byte_size(data)}}
   end
 
   def handle_cast({:message, message}, %{socket: socket, port: port} = state) do

@@ -2,7 +2,13 @@ defmodule Client do
   alias Client.Server
 
   def start(port) do
-    {:ok, pid} = Server.start_link(%{socket: nil, port: port})
+    {:ok, pid} = Server.start_link(%{
+      socket: nil,
+      port: port,
+      check_sum: 0,
+      filename: "",
+      total_size: 0,
+    })
     pid
   end
 
