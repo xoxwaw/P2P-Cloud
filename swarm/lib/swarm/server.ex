@@ -3,7 +3,8 @@ defmodule Swarm.Server do
   alias Swarm.{Node, AVL}
 
   def start_link() do
-    GenServer.start_link(__MODULE__, %Node{})
+    {:ok, pid} = GenServer.start_link(__MODULE__, %Node{})
+    pid
   end
 
   def init(state) do
@@ -12,7 +13,12 @@ defmodule Swarm.Server do
 
   def handle_cast({:insert, node}, state) do
     new_state = AVL.insert(state, node)
-    new_state
+    {:ok, new_state}
+  end
+
+  def handle_call({:all_nodes}, _from, state) do
+    lst = AVL.to_list([state], [])
+    {:ok, lst}
   end
 
 end

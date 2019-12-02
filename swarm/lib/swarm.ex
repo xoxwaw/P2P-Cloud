@@ -14,6 +14,6 @@ defmodule Swarm do
   end
 
   def get_all(pid) do
-    GenServer.cast(pid, {:all_nodes})
+    GenServer.call(pid, {:all_nodes})
   end
 end
