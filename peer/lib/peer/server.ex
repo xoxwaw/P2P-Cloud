@@ -32,8 +32,14 @@ defmodule Peer.Server do
   end
 
   def handle_info({:tcp, _, data}, state=%{socket: socket}) do
-    IO.puts("Received #{IO.inspect(data) }")
-    {:noreply, %{state | list_peers: data}}
+    case String.split(data) do
+      ["PEERS" | lst] ->
+        IO.inspect(lst)
+        {:noreply, %{state | list_peers: lst}}
+      _ ->
+        {:noreply, state}
+    end
+
   end
 
   def handle_call({:list_peers}, _from, state=%{list_peers: list_peers}) do

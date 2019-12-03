@@ -21,7 +21,6 @@ defmodule Swarm.Server do
   end
 
   def handle_info({:tcp, socket, data}, state) do
-    IO.inspect(state)
     case String.split(data) do
       ["JOIN", address] ->
         send(self(), {:insert, address})
@@ -40,7 +39,8 @@ defmodule Swarm.Server do
 
   def handle_info({:nodes}, state=%{socket: socket, transport: transport, state_id: sid}) do
     lst = GenServer.call(sid, {:nodes})
-    transport.send(socket, lst)
+    nodes = Enum.join(lst, " ")
+    transport.send(socket, "PEERS #{nodes}")
     {:noreply, state}
   end
 
