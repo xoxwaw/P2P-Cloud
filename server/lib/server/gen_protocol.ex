@@ -4,7 +4,7 @@ defmodule Server.GenProtocol do
   require Logger
 
   @behaviour :ranch_protocol
-  @root "../../assets/"
+  @root "../../assets/" <> System.get_env("PORT") <> "/"
 
   def start_link(ref, socket, transport, _opts) do
     pid = :proc_lib.spawn_link(__MODULE__, :init, [ref, socket, transport])
@@ -39,7 +39,7 @@ defmodule Server.GenProtocol do
   end
 
   def handle_info({:store_file, file_size, filename}, state) do
-    {:noreply, %{state | filename:  filename, total_size: String.to_integer(file_size)}}
+    {:noreply, %{state | filename: @root <> filename, total_size: String.to_integer(file_size)}}
   end
 
   def handle_info({:download, data}, state= %{
@@ -68,8 +68,6 @@ defmodule Server.GenProtocol do
     end)
     {:noreply, state}
   end
-
-
 
   def handle_info({:tcp_closed, socket}, state = %{socket: socket, transport: transport}) do
     IO.puts "Closing"

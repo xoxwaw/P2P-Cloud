@@ -3,7 +3,6 @@ defmodule Client.Server do
   use GenServer
 
   @ip {127, 0, 0, 1}
-  @root "../../assets/"
 
   def start_link(state) do
     GenServer.start_link(__MODULE__, state)
@@ -66,7 +65,7 @@ defmodule Client.Server do
   def handle_info({:response, {:metadata, file_size, filename}}, state) do
     {
       :noreply, %{
-        state | filename: @root <> filename |> Path.expand(__DIR__),
+        state | filename: filename,
         total_size: String.to_integer(file_size)}
     }
   end

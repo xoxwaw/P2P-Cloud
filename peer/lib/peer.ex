@@ -1,17 +1,21 @@
 defmodule Peer do
   alias Peer.Server
+  @root "../assets/"
+
   def start do
     {:ok,pid} = Server.start_link
     join(pid, 8080)
     pid
   end
 
-  def store_file(pid, port, path) do
-    GenServer.cast(pid, {:store_file, port, path})
+  def store_file(pid, filename) do
+    port = System.get_env("PORT")
+    path = @root <> "#{port}/#{filename}" |> Path.expand(__DIR__)
+    GenServer.cast(pid, {:store_file, path})
   end
 
-  def get_file(pid, port, filename) do
-    GenServer.cast(pid, {:get_file, port, filename})
+  def get_file(pid, filename) do
+    GenServer.cast(pid, {:get_file, filename})
   end
 
   def ping(pid, port) do

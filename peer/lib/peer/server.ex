@@ -1,5 +1,6 @@
 defmodule Peer.Server do
   require Logger
+  alias Peer.Transfer
   @ip {127,0,0,1}
 
   def start_link do
@@ -51,15 +52,14 @@ defmodule Peer.Server do
     {:stop, :normal, state}
   end
 
-  def handle_cast({:store_file, port, path}, state) do
-    pid = Client.start(port)
-    Client.store_file(pid, path)
+  def handle_cast({:store_file, path}, state=%{list_peers: peers}) do
+    Transfer.store(path, peers)
     {:noreply, state}
   end
 
-  def handle_cast({:get_file, port, path}, state) do
-    pid = Client.start(port)
-    Client.get_file(pid, path)
+  def handle_cast({:get_file, path}, state) do
+    # pid = Client.start(port)
+    # Client.get_file(pid, path)
     {:noreply, state}
   end
 

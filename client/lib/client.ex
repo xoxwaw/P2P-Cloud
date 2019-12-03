@@ -12,10 +12,7 @@ defmodule Client do
     pid
   end
 
-  def store_file(pid, filename) do
-    path =
-      "../assets/" <> filename
-      |> Path.expand(__DIR__)
+  def store_file(pid, path) do
     GenServer.cast(pid, {:request, {:store_file, path}})
   end
 
