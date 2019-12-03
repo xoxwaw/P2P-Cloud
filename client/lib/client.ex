@@ -23,6 +23,4 @@ defmodule Client do
     GenServer.cast(pid, {:request, {:get_file, filename}})
   end
 
-
-
 end

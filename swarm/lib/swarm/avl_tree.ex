@@ -166,19 +166,21 @@ defmodule Swarm.AVL do
     inorder(f, r)
   end
 
-  def to_list([], res), do: res
-  def to_list( [%Node{address: addr, left: l, right: r} | t], res) do
-    cond do
-      l != nil and r != nil ->
-        to_list(t ++ [l,r], [addr|res])
-      l != nil and r == nil ->
-        to_list(t ++ [r], [addr | res])
-      r != nil and l == nil ->
-        to_list(t ++ [l], [addr | res])
-      r == nil and l == nil ->
-        to_list(t, [addr | res])
-    end
-
+  def to_list([nil]), do: nil
+  def to_list([]), do: []
+  def to_list( [%Node{address: addr, left: l, right: r} | t]) do
+    res =
+      cond do
+        l != nil and r != nil ->
+          [addr | to_list(t ++ [l,r])]
+        l != nil and r == nil ->
+          [addr | to_list(t ++ [l])]
+        r != nil and l == nil ->
+          [addr | to_list(t ++ [r])]
+        r == nil and l == nil ->
+          [addr | to_list(t)]
+      end
+    res
   end
 
 end

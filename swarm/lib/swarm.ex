@@ -1,19 +1,12 @@
 defmodule Swarm do
-  alias Swarm.Server
-  def start do
-    {:ok, pid} = Server.start_link
-    pid
+  alias Swarm.{Server, State}
+  require Logger
+
+  def start_link() do
+    port = String.to_integer( System.get_env("PORT"))
+    Logger.info("LISTEN TO PORT #{port}")
+    sid = State.start_link
+    :ranch.start_listener(make_ref(), :ranch_tcp, [{:port, port}], Server, [{:sid, sid}])
   end
 
-  def add_node(pid, node) do
-    GenServer.cast(pid, {:insert, node})
-  end
-
-  def remove_node(pid, node) do
-    GenServer.cast(pid, {:remove, node})
-  end
-
-  def get_all(pid) do
-    GenServer.call(pid, {:all_nodes})
-  end
 end

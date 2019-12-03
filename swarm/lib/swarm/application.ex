@@ -6,13 +6,10 @@ defmodule Swarm.Application do
   use Application
 
   def start(_type, _args) do
+    import Supervisor.Spec
     children = [
-      # Starts a worker by calling: Swarm.Worker.start_link(arg)
-      # {Swarm.Worker, arg}
+      worker(Swarm,[]),
     ]
-
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Swarm.Supervisor]
     Supervisor.start_link(children, opts)
   end
