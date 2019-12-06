@@ -12,6 +12,8 @@ defmodule Swarm.AVL do
           %Node{root | left: insert(l, address)}
         address > addr ->
           %Node{root | right: insert(r, address)}
+        address == addr ->
+          root
       end
     root = %Node{root | height: 1 + max(height(root.left), height(root.right))}
     balance = get_balance(root)
@@ -21,9 +23,9 @@ defmodule Swarm.AVL do
       balance < -1 and address > root.right.address ->
         rr(root)
       balance > 1 and address > root.left.address ->
-        rl(root)
-      balance < -1 and address < root.right.address ->
         lr(root)
+      balance < -1 and address < root.right.address ->
+        rl(root)
       true ->
         root
     end

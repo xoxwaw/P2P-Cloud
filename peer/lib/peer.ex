@@ -1,6 +1,6 @@
 defmodule Peer do
   alias Peer.Server
-  @root "../assets/"
+  @root "../assets/" |> Path.expand(__DIR__)
 
   def start do
     {:ok,pid} = Server.start_link
@@ -10,7 +10,13 @@ defmodule Peer do
 
   def store_file(pid, filename) do
     port = System.get_env("PORT")
-    path = @root <> "#{port}/#{filename}" |> Path.expand(__DIR__)
+    case File.ls!(@root) |> Enum.member?(port) do
+      false ->
+        System.cmd("mkdir", [@root <> "/#{port}"])
+      true ->
+        IO.inspect("EXISTS")
+    end
+    path = @root <> "/#{port}/#{filename}"
     GenServer.cast(pid, {:store_file, path})
   end
 

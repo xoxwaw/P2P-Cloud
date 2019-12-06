@@ -4,7 +4,7 @@ defmodule Server.GenProtocol do
   require Logger
 
   @behaviour :ranch_protocol
-  @root "../../assets/" <> System.get_env("PORT") <> "/"
+  @root "../../assets/" <> System.get_env("PORT") |> Path.expand(__DIR__)
 
   def start_link(ref, socket, transport, _opts) do
     pid = :proc_lib.spawn_link(__MODULE__, :init, [ref, socket, transport])
@@ -13,7 +13,7 @@ defmodule Server.GenProtocol do
 
   def init(ref, socket, transport) do
     IO.puts "Starting protocol"
-
+    System.cmd("mkdir", [@root]) 
     :ok = :ranch.accept_ack(ref)
     :ok = transport.setopts(socket, [:binary, {:active, true}])
     :gen_server.enter_loop(__MODULE__, [], %{
@@ -39,14 +39,16 @@ defmodule Server.GenProtocol do
   end
 
   def handle_info({:store_file, file_size, filename}, state) do
-    {:noreply, %{state | filename: @root <> filename, total_size: String.to_integer(file_size)}}
+    {:noreply, %{state | filename: @root <> "/#{filename}", total_size: String.to_integer(file_size)}}
   end
 
   def handle_info({:download, data}, state= %{
     socket: socket, transport: transport, filename: filename,
     check_sum: check_sum, total_size: total_size}) do
       File.write(filename, data, [:append])
+      IO.inspect(filename)
       if byte_size(data) + check_sum == total_size do
+        IO.puts("#{filename} transferred, #{total_size} deliverred")
         transport.close(socket)
       end
       {:noreply, %{state | check_sum: check_sum + byte_size(data)}}

@@ -1,6 +1,5 @@
 defmodule Peer.Transfer do
   def store(path, peers) do
-    IO.inspect(peers) 
     split(path, peers)
     prefix = get_prefix(path)
     chunks = prefix |> File.ls!
@@ -11,6 +10,7 @@ defmodule Peer.Transfer do
   def send_to_peers([], []), do: []
   def send_to_peers([chunk | t], [peer | p]) do
     pid = Client.start(peer |> String.to_integer )
+    IO.puts("#{IO.inspect(peer)}, #{IO.inspect(chunk)}")
     Client.store_file(pid, chunk)
     send_to_peers(t, p)
   end
@@ -18,8 +18,9 @@ defmodule Peer.Transfer do
   def split(path, peers) do
     len = length(peers)
     {res, _} = System.cmd("wc", ["-l", path])
+    IO.inspect(res)
     lines =  String.split(res) |> Enum.at(0) |> String.to_integer
-    chunk_size = div(lines, len)
+    chunk_size = div(lines, len-1)
     filename = get_file_name(path)
     System.cmd("mkdir", [get_prefix(path)])
     System.cmd("gsplit", ["-l", "#{chunk_size}", path, get_prefix(path)])
